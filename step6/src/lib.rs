@@ -1,9 +1,13 @@
 
+#![allow(dead_code)]
 use futures::stream::Stream;
-use futures::{Future, Poll};
+use futures::{Future, Poll,Async};
+use futures::sink::Sink;
 
 use std::io;
 use std::net::SocketAddr;
+//use std::sync::mpsc;
+use futures::sync::mpsc;
 
 use tun::platform::Device;
 
@@ -12,9 +16,12 @@ use tokio::reactor::PollEvented2;
 use tokio::runtime::Runtime;
 use tokio::io::{AsyncRead};
 
+
 use bytes::{BytesMut,Bytes};
 
 use etherparse::*;
+
+mod tcp;
 
 #[derive(Debug)]
 pub struct TcpListener;
@@ -27,10 +34,12 @@ pub struct TcpStream;
 
 impl TcpListener {
     pub fn bind(_addr: &SocketAddr) -> io::Result<Self> {
-        unimplemented!()
+        Ok(TcpListener{})
+        //unimplemented!()
     }
     pub fn incoming(self) -> Incoming {
-        unimplemented!()
+        Incoming{}
+        //unimplemented!()
     }
 }
 
@@ -38,9 +47,11 @@ impl Stream for Incoming {
     type Item = TcpStream;
     type Error = io::Error;
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        unimplemented!()
+        Ok(Async::NotReady)
+        //unimplemented!()
     }
 }
+
 
 ///====== tcp protocol engine ======
 pub struct Libtcp;
@@ -56,12 +67,73 @@ impl Libtcp {
         let (rd,wr) = event.split();
         let writer = FramedWrite::new(wr,BytesCodec::new());
 
-        FramedRead::new(rd, BytesCodec::new())
-            .filter_map(|bytes| Self::filter_with_icmp(bytes))            
-            .map(|bytes| Self::gen_ping_echo(bytes))
-            .forward(writer)
-            .map(|_|())
-            .map_err(|e| eprintln!("[libtcp] error:{:?}", e))
+        let (tx,rx) = mpsc::channel(1500);
+        //let (tx,rx) = mpsc::channel();
+
+        let read_fut = FramedRead::new(rd, BytesCodec::new())
+            .filter_map(|bytes| {
+                
+                let tcpcon = Self::filter_with_tcp(&bytes).map(tcp::FilterPacket::Tcp);
+                let icmpbytes = Self::filter_with_icmp(bytes).map(tcp::FilterPacket::Ping);
+                tcpcon.or(icmpbytes) 
+            })
+            //Step 2: handle icmp packet            
+            .map(move |packet|{
+
+                match packet{
+                    tcp::FilterPacket::Ping(bytes)=>{
+                        let echo_bytes = Self::gen_ping_echo(bytes);
+                        tx.clone().send(echo_bytes).wait().unwrap();
+                    }
+                    tcp::FilterPacket::Tcp(_conn)=>{
+
+                    }
+                }
+
+                ()
+            })
+            .collect();
+
+        let rx_adapter = rx.map_err(|_|std::io::Error::from(std::io::ErrorKind::Other));
+        let writer_fut = writer.send_all(rx_adapter);
+
+        //method 1, use reader_fut join writer_fut
+        let joined = read_fut.join(writer_fut);
+        joined.map(|_|()).map_err(|_|())
+
+        //method 2, spawn writer in another thread 
+        // let writer_fut = futures::future::lazy(||{
+        //     tokio::spawn(writer_fut.map(|_|()).map_err(|_|()));
+        //     Ok(())
+        // });
+        // let joined = read_fut.join(writer_fut);
+        // joined.map(|_|()).map_err(|_|())
+ 
+    }
+
+    fn filter_with_tcp(bytes: &BytesMut)->Option<tcp::Connection>{
+        if let Ok(value) = PacketHeaders::from_ip_slice(&bytes[..]) {
+            if let Some(IpHeader::Version4(ipv4)) = value.ip {
+                if IpTrafficClass::Tcp as u8 == ipv4.protocol {
+                    let tcph = value.transport.unwrap().tcp().unwrap();
+
+                    if tcph.syn || tcph.fin || tcph.psh {
+                        return Some(tcp::Connection::new(&ipv4,&tcph))
+                    }
+                }                    
+            }
+        }
+        None
+    }
+    fn gen_tcp_packet(mut con: tcp::Connection)->Bytes{
+        
+        let buf = "hello\n".as_bytes();
+
+        if !con.tcph.psh {
+            con.gen_packet(&[0;0])
+        }else{
+            con.gen_packet(buf)
+        }
     }
 
     fn filter_with_icmp(bytes: BytesMut)->Option<BytesMut>{

@@ -1,6 +1,8 @@
 /target
 **/*.rs.bk
 
+/.vscode
+notes.md
 #Added by cargo
 #
 #already existing elements are commented out

@@ -1,0 +1,14 @@
+[package]
+name = "libtcp_step5"
+version = "0.1.0"
+authors = ["0"]
+edition = "2018"
+
+[dependencies]
+futures = "0.1.26"
+tun = { version = "0.4.3" , features = ["mio"] }
+tokio="0.1.18"
+libc = "0.2.51"
+etherparse = "0.8.0"
+bytes = "0.4.12"
+

@@ -1,4 +1,5 @@
 
+#![allow(dead_code)]
 use bytes::Bytes;
 use std::net::{SocketAddrV4,Ipv4Addr};
 use etherparse::*;
@@ -24,7 +25,7 @@ impl Connection {
 
         let ack = if !tcph.psh {tcph.sequence_number+1} else {tcph.sequence_number +  iph.payload_len as u32 - tcph.header_len() as u32 };
 
-        let mut con = Connection{
+        let con = Connection{
             state: State::SynRcvd,
             send: SendSequenceSpace{
                 iss,

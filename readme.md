@@ -8,9 +8,32 @@ code <https://github.com/jonhoo/rust-tcp>
 
 ## run in docker
 
+### Tips&Notes
+
 >`docker build -t corbamico/rust:1.34 .`  
 >`docker run -v /c/project/rust/docker:/home/rust -w /home/rust  --cap-add=NET_ADMIN  --device=/dev/net/tun  -it  corbamico/rust:1.34   /bin/bash`  
 >`docker exec -it 678f26b3a034 -u 0:0 /bin/bash`
+
+### run vscode inside docker  
+
+for windows 10, install VcXsrv
+
+>`docker run --rm -v /c/project/rust/docker:/home/rust -w /home/rust/tun_libtcp  --privileged --cap-add=NET_ADMIN  --device=/dev/net/tun  --env DISPLAY=10.0.75.1:0.0 corbamico/rust:vscode code --wait --diable-updates --user-data-dir=/var/run/code .`
+
+* --privileged  
+  vscode need dbus  
+
+* --wait
+  vscode need xclient link to x-server
+
+* --user-data-dir
+  see refence <https://github.com/Microsoft/vscode/issues/28126>
+
+### tips for attach shell from cmd.exe
+
+create fish.bat file as:
+
+>`@pwsh -c "& {$cid=docker ps -q ; docker exec -it $cid.trim() /usr/bin/fish}"`
 
 ## Steps
 
@@ -91,3 +114,16 @@ code <https://github.com/jonhoo/rust-tcp>
             .forward(writer)
             ...
     ```
+
+### Step5
+
+* Description
+
+    implement ping via mpsc.
+
+### Step6
+
+* Description
+
+    1.implement background process via reader-future and writer-future.    
+    2.as application-level, empty "demo tcp server fn tcp_srv()" use libtcp as tcp stack.

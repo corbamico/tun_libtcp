@@ -1,13 +1,18 @@
-#![allow(dead_code)]
 
-use bytes::Bytes;
+#![allow(dead_code)]
+use bytes::{Bytes,BytesMut};
 use std::net::{SocketAddrV4,Ipv4Addr};
 use etherparse::*;
-
 enum State{
     SynRcvd,
     Estab,
 }
+
+pub enum FilterPacket{
+    Ping(BytesMut),
+    Tcp(Connection),
+}
+
 
 pub struct Connection {
     state: State,
@@ -15,8 +20,7 @@ pub struct Connection {
     recv: RecvSequenceSpace,
     src:  std::net::SocketAddrV4,
     dst:  std::net::SocketAddrV4,  
-    pub tcph: TcpHeader, 
-    
+    pub tcph: TcpHeader,     
 }
 
 impl Connection {

@@ -1,4 +1,4 @@
-
+#![allow(dead_code)]
 use futures::stream::Stream;
 use futures::{Future, Poll};
 use futures::future::Either;
@@ -16,8 +16,6 @@ use tokio::io::{AsyncRead};
 use bytes::{BytesMut,Bytes};
 
 use etherparse::*;
-
-use std::str::FromStr;
 
 mod tcp;
 
