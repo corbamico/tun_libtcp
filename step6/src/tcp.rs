@@ -29,9 +29,11 @@ impl Connection {
         let wnd = 1024;
 
         let ack = if !tcph.psh {tcph.sequence_number+1} else {tcph.sequence_number +  iph.payload_len as u32 - tcph.header_len() as u32 };
+        //only handle first ack
+        let state = if tcph.ack {State::Estab} else {State::SynRcvd};
 
         let con = Connection{
-            state: State::SynRcvd,
+            state: state,
             send: SendSequenceSpace{
                 iss,
                 una:iss,

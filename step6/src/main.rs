@@ -6,7 +6,7 @@ use tokio::timer::Interval;
 use libtcp_step6::{Libtcp,TcpListener};
 
 fn main() {
-    let egine = Libtcp::process();
+    let egine = Libtcp::instance().process();
     let demo_tcp_server = tcp_srv();
 
     let task = tick().join3(egine,demo_tcp_server).map(|_| ());    
@@ -31,6 +31,7 @@ fn tcp_srv()->impl Future<Item = (), Error = ()> {
     let listener = TcpListener::bind(&addr).unwrap();
     let server = listener.incoming().for_each(|_stream|{
         //use stream
+        println!("we got a client, aha!");
         Ok(())
     })
     .map_err(|e|{

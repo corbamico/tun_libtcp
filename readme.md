@@ -127,3 +127,15 @@ create fish.bat file as:
 
     1.implement background process via reader-future and writer-future.    
     2.as application-level, empty "demo tcp server fn tcp_srv()" use libtcp as tcp stack.
+    3.can accept multi tcp client on one tcp server, but does not implement tcpstream.
+
+### Step6
+
+* Description
+    1.re-work Step6 avoid static Libtcp    
+
+### Step7
+
+* Description
+    1.Deal with TCP.State LastAck,Closed while recive FIN
+    2.Demo TCP Server for Connect/Read from Client/Closed from Client   

@@ -6,6 +6,8 @@ use futures::sink::Sink;
 
 use std::io;
 use std::net::SocketAddr;
+use std::sync::Arc;
+
 //use std::sync::mpsc;
 use futures::sync::mpsc;
 
@@ -24,21 +26,33 @@ use etherparse::*;
 mod tcp;
 
 #[derive(Debug)]
-pub struct TcpListener;
+pub struct TcpListener{
+    //channel for notify incoming socket.
+    rx_accept: mpsc::Receiver<u32>,
+}
 
 #[derive(Debug)]
-pub struct Incoming;
+pub struct Incoming{
+    rx_accept: mpsc::Receiver<u32>,
+}
 
 #[derive(Debug)]
 pub struct TcpStream;
 
 impl TcpListener {
     pub fn bind(_addr: &SocketAddr) -> io::Result<Self> {
-        Ok(TcpListener{})
+        let (tx,rx) = mpsc::channel(1500);
+
+        //put sender of channel into libtcp 
+        Libtcp::instance().insert(tx);
+
+        Ok(TcpListener{
+            rx_accept:rx,
+        })
         //unimplemented!()
     }
     pub fn incoming(self) -> Incoming {
-        Incoming{}
+        Incoming{rx_accept:self.rx_accept}
         //unimplemented!()
     }
 }
@@ -47,28 +61,59 @@ impl Stream for Incoming {
     type Item = TcpStream;
     type Error = io::Error;
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        Ok(Async::NotReady)
-        //unimplemented!()
+        //let mut _rx = Libtcp::instance().rx_accept.take().unwrap();
+        match self.rx_accept.poll() {
+            Ok(Async::NotReady)=>Ok(Async::NotReady),
+            Ok(Async::Ready(None))=>Ok(Async::Ready(None)),            
+            Ok(Async::Ready(Some(_u)))=>Ok(Async::Ready(Some(TcpStream{}))),            
+            Err(_)=>Err(std::io::Error::from(std::io::ErrorKind::Other)),
+        }
     }
 }
 
 
 ///====== tcp protocol engine ======
-pub struct Libtcp;
+static mut LIBTCP: Libtcp = Libtcp{tx_accept:None};
+static INIT: std::sync::Once = std::sync::ONCE_INIT;
+
+pub struct Libtcp{
+    tx_accept: Option<Arc<mpsc::Sender<u32>>>,
+}
 
 impl Libtcp {
-    pub fn process_in_runtime(rt: &mut Runtime) -> io::Result<()> {
-        let task = Self::process();
+    pub(crate) fn insert(&mut self,tx: mpsc::Sender<u32>){
+        self.tx_accept.replace(Arc::new(tx));
+    }
+
+    pub fn instance()->&'static mut Self{
+        unsafe{
+            // INIT.call_once(||{
+            //     let (tx,rx) = mpsc::channel(1500);
+                
+            //     LIBTCP = Libtcp{
+            //         tx_accept:Some(Arc::new(tx)),
+            //         rx_accept:Some(rx),
+            //     };
+            // });
+
+            &mut LIBTCP
+        }
+    }
+
+    pub fn process_in_runtime(&mut self,rt: &mut Runtime) -> io::Result<()> {
+        let task = self.process();
         rt.spawn(task);
         Ok(())
     }
-    pub fn process() -> impl Future<Item = (), Error = ()> {
+    pub fn process(&mut self) -> impl Future<Item = (), Error = ()> {
         let event = PollEvented2::new(Device::default());        
         let (rd,wr) = event.split();
         let writer = FramedWrite::new(wr,BytesCodec::new());
 
         let (tx,rx) = mpsc::channel(1500);
         //let (tx,rx) = mpsc::channel();
+
+        //let tx_acc = (*Libtcp::instance().tx_accept.take().unwrap()).clone();
 
         let read_fut = FramedRead::new(rd, BytesCodec::new())
             .filter_map(|bytes| {
@@ -85,8 +130,17 @@ impl Libtcp {
                         let echo_bytes = Self::gen_ping_echo(bytes);
                         tx.clone().send(echo_bytes).wait().unwrap();
                     }
-                    tcp::FilterPacket::Tcp(_conn)=>{
-
+                    tcp::FilterPacket::Tcp(mut conn)=>{
+                        let bytes = conn.gen_packet(&[0;0]);
+                        tx.clone().send(bytes).wait().unwrap();
+                        
+                        if conn.tcph.syn {
+                            
+                            let mut tx_acc = (*Libtcp::instance().tx_accept.take().unwrap()).clone();                        
+                            tx_acc.try_send(1).unwrap();
+                            Libtcp::instance().tx_accept.replace(Arc::new(tx_acc));
+                            //So ugly, use sender, and put new one back again.
+                        }
                     }
                 }
 
