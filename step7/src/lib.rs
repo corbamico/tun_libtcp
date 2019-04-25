@@ -65,12 +65,10 @@ impl Stream for Incoming {
     //type Error = io::Error;
     type Error = ();
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        //let mut _rx = Libtcp::instance().rx_accept.take().unwrap();
         match self.rx_accept.poll() {
             Ok(Async::NotReady) => Ok(Async::NotReady),
             Ok(Async::Ready(None)) => Ok(Async::Ready(None)),
             Ok(Async::Ready(Some(rx_data))) => Ok(Async::Ready(Some(TcpStream { rx_data }))),
-            //Err(_) => Err(std::io::Error::from(std::io::ErrorKind::Other)),
             Err(_) => Err(()),
         }
     }

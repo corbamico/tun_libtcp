@@ -139,3 +139,18 @@ create fish.bat file as:
 * Description
     1.Deal with TCP.State LastAck,Closed while recive FIN
     2.Demo TCP Server for Connect/Read from Client/Closed from Client   
+
+    ```shell
+    1 0.000000000     10.0.0.1 ? 10.0.0.5     TCP 60 46017 ? 8000 [SYN] Seq=0 Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=2216703 TSecr=0 WS=128
+    2 0.000046100     10.0.0.5 ? 10.0.0.1     TCP 40 8000 ? 46017 [SYN, ACK] Seq=0 Ack=1 Win=1024 Len=0
+    3 0.000080200     10.0.0.1 ? 10.0.0.5     TCP 40 46017 ? 8000 [ACK] Seq=1 Ack=1 Win=29200 Len=0
+    4 1.707420800     10.0.0.1 ? 10.0.0.5     TCP 42 46017 ? 8000 [PSH, ACK] Seq=1 Ack=1 Win=29200 Len=2
+    5 1.707567700     10.0.0.5 ? 10.0.0.1     TCP 40 8000 ? 46017 [ACK] Seq=1 Ack=3 Win=1024 Len=0
+    6 2.366750100     10.0.0.1 ? 10.0.0.5     TCP 43 46017 ? 8000 [PSH, ACK] Seq=3 Ack=1 Win=29200 Len=3
+    7 2.366860000     10.0.0.5 ? 10.0.0.1     TCP 40 8000 ? 46017 [ACK] Seq=1 Ack=6 Win=1024 Len=0
+    8 2.877136600     10.0.0.1 ? 10.0.0.5     TCP 42 46017 ? 8000 [PSH, ACK] Seq=6 Ack=1 Win=29200 Len=2
+    9 2.877204400     10.0.0.5 ? 10.0.0.1     TCP 40 8000 ? 46017 [ACK] Seq=1 Ack=8 Win=1024 Len=0
+   10 7.182180400     10.0.0.1 ? 10.0.0.5     TCP 40 46017 ? 8000 [FIN, ACK] Seq=8 Ack=1 Win=29200 Len=0
+   11 7.182287800     10.0.0.5 ? 10.0.0.1     TCP 40 8000 ? 46017 [FIN, ACK] Seq=1 Ack=9 Win=1024 Len=0
+   12 7.182303500     10.0.0.1 ? 10.0.0.5     TCP 40 46017 ? 8000 [ACK] Seq=9 Ack=2 Win=29200 Len=0
+   ```
